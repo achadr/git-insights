@@ -1,3 +1,5 @@
+import { memo } from 'react';
+import PropTypes from 'prop-types';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 const CopyButton = ({ text, label = 'Copy', className = '' }) => {
@@ -35,4 +37,10 @@ const CopyButton = ({ text, label = 'Copy', className = '' }) => {
   );
 };
 
-export default CopyButton;
+CopyButton.propTypes = {
+  text: PropTypes.string.isRequired,
+  label: PropTypes.string,
+  className: PropTypes.string,
+};
+
+export default memo(CopyButton);

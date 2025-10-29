@@ -1,30 +1,11 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
+import PropTypes from 'prop-types';
 import CopyButton from '../common/CopyButton';
 import Tooltip from '../common/Tooltip';
+import { getScoreColorClasses, getScoreBadgeColor, getScoreLabel } from '../../utils/scoreUtils';
 
 const FileCard = ({ file }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700';
-    if (score >= 60) return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700';
-    if (score >= 40) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700';
-    return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700';
-  };
-
-  const getScoreBadgeColor = (score) => {
-    if (score >= 80) return 'bg-green-600 dark:bg-green-500';
-    if (score >= 60) return 'bg-blue-600 dark:bg-blue-500';
-    if (score >= 40) return 'bg-yellow-600 dark:bg-yellow-500';
-    return 'bg-red-600 dark:bg-red-500';
-  };
-
-  const getScoreLabel = (score) => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    return 'Needs Work';
-  };
 
   const getIssueIcon = (issue) => {
     // Handle both string format and object format {file, issue}
@@ -74,10 +55,11 @@ const FileCard = ({ file }) => {
   const hasRecommendations = file.recommendations && file.recommendations.length > 0;
 
   return (
-    <div className={`rounded-lg border-2 transition-all duration-200 ${getScoreColor(file.score)} ${isExpanded ? 'shadow-lg' : 'shadow-sm hover:shadow-md'}`}>
+    <div className={`rounded-lg border-2 transition-all duration-200 ${getScoreColorClasses(file.score)} ${isExpanded ? 'shadow-lg' : 'shadow-sm hover:shadow-md'}`}>
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
         className="w-full p-4 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 rounded-lg"
       >
         <div className="flex items-center flex-1 min-w-0 mr-4">
@@ -96,7 +78,7 @@ const FileCard = ({ file }) => {
               <CopyButton text={file.file} label="file path" />
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              {getScoreLabel(file.score)} • {file.issues?.length || 0} {file.issues?.length === 1 ? 'issue' : 'issues'}
+              {getScoreLabel(file.score)} &bull; {file.issues?.length || 0} {file.issues?.length === 1 ? 'issue' : 'issues'}
             </p>
           </div>
         </div>
@@ -138,9 +120,10 @@ const FileCard = ({ file }) => {
                 {file.issues.map((issue, idx) => {
                   const issueText = typeof issue === 'string' ? issue : issue.issue;
                   const issueFile = typeof issue === 'string' ? null : issue.file;
+                  const issueKey = typeof issue === 'string' ? `${file.file}-issue-${idx}` : `${issueFile || file.file}-${issueText.substring(0, 30)}`;
 
                   return (
-                    <div key={idx} className="flex items-start bg-white bg-opacity-50 rounded p-3">
+                    <div key={issueKey} className="flex items-start bg-white bg-opacity-50 rounded p-3">
                       <div className="flex-shrink-0 mr-3 mt-0.5">
                         {getIssueIcon(issue)}
                       </div>
@@ -168,7 +151,7 @@ const FileCard = ({ file }) => {
               </h4>
               <div className="space-y-2">
                 {file.recommendations.map((rec, idx) => (
-                  <div key={idx} className="flex items-start bg-white bg-opacity-50 rounded p-3">
+                  <div key={`${file.file}-rec-${rec.substring(0, 30)}-${idx}`} className="flex items-start bg-white bg-opacity-50 rounded p-3">
                     <div className="flex-shrink-0 mr-3 mt-0.5">
                       <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -197,4 +180,21 @@ const FileCard = ({ file }) => {
   );
 };
 
-export default FileCard;
+FileCard.propTypes = {
+  file: PropTypes.shape({
+    file: PropTypes.string.isRequired,
+    score: PropTypes.number.isRequired,
+    issues: PropTypes.arrayOf(
+      PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.shape({
+          issue: PropTypes.string,
+          file: PropTypes.string,
+        })
+      ])
+    ),
+    recommendations: PropTypes.arrayOf(PropTypes.string),
+  }).isRequired,
+};
+
+export default memo(FileCard);

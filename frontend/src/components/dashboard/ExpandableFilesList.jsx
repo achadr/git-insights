@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import FileCard from './FileCard';
 
 const ExpandableFilesList = ({ files }) => {
@@ -63,6 +64,8 @@ const ExpandableFilesList = ({ files }) => {
                 placeholder="Search files..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search files"
+                role="searchbox"
                 className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 transition-colors duration-200"
               />
               <svg
@@ -116,8 +119,8 @@ const ExpandableFilesList = ({ files }) => {
       {/* File Cards */}
       {processedFiles.length > 0 ? (
         <div className="space-y-3">
-          {processedFiles.map((file, index) => (
-            <FileCard key={index} file={file} />
+          {processedFiles.map((file) => (
+            <FileCard key={file.file} file={file} />
           ))}
         </div>
       ) : (
@@ -141,6 +144,25 @@ const ExpandableFilesList = ({ files }) => {
       </div>
     </div>
   );
+};
+
+ExpandableFilesList.propTypes = {
+  files: PropTypes.arrayOf(
+    PropTypes.shape({
+      file: PropTypes.string.isRequired,
+      score: PropTypes.number.isRequired,
+      issues: PropTypes.arrayOf(
+        PropTypes.oneOfType([
+          PropTypes.string,
+          PropTypes.shape({
+            issue: PropTypes.string,
+            file: PropTypes.string,
+          })
+        ])
+      ),
+      recommendations: PropTypes.arrayOf(PropTypes.string),
+    })
+  ),
 };
 
 export default ExpandableFilesList;

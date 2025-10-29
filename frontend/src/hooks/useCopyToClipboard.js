@@ -10,7 +10,7 @@ export const useCopyToClipboard = () => {
       setTimeout(() => setIsCopied(false), 2000);
       return true;
     } catch (err) {
-      console.error('Failed to copy:', err);
+      // Silently fail - user will see that copy didn't work via UI
       return false;
     }
   };

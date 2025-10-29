@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { KEYBOARD_SHORTCUTS } from '../../hooks/useKeyboardShortcuts';
 
 const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
@@ -44,6 +45,7 @@ const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
               </h3>
               <button
                 onClick={onClose}
+                aria-label="Close shortcuts modal"
                 className="text-white hover:text-gray-200 transition-colors duration-150"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,14 +57,14 @@ const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
 
           {/* Content */}
           <div className="px-6 py-6 space-y-6">
-            {KEYBOARD_SHORTCUTS.map((category, idx) => (
-              <div key={idx}>
+            {KEYBOARD_SHORTCUTS.map((category) => (
+              <div key={category.category}>
                 <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                   {category.category}
                 </h4>
                 <div className="space-y-2">
-                  {category.shortcuts.map((shortcut, sidx) => (
-                    <div key={sidx} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
+                  {category.shortcuts.map((shortcut) => (
+                    <div key={shortcut.description} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
                       <span className="text-sm text-gray-700 dark:text-gray-300">
                         {shortcut.description}
                       </span>
@@ -95,6 +97,11 @@ const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
       </div>
     </div>
   );
+};
+
+KeyboardShortcutsModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
 export default KeyboardShortcutsModal;

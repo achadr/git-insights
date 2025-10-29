@@ -1,8 +1,12 @@
+import { lazy, Suspense } from 'react';
+import PropTypes from 'prop-types';
 import QualityScore from './QualityScore';
 import ExpandableFilesList from './ExpandableFilesList';
 import FilesOverview from './FilesOverview';
-import ExportPDFButton from '../common/ExportPDFButton';
 import ExportDataButton from '../common/ExportDataButton';
+
+// Lazy load PDF export to reduce main bundle size (html2canvas is ~200KB)
+const ExportPDFButton = lazy(() => import('../common/ExportPDFButton'));
 
 const AnalysisDashboard = ({ data, repoUrl }) => {
   // Calculate total issues across all files
@@ -20,7 +24,13 @@ const AnalysisDashboard = ({ data, repoUrl }) => {
         </div>
         <div className="flex gap-2 flex-wrap">
           <ExportDataButton analysisData={data} repoUrl={repoUrl} />
-          <ExportPDFButton analysisData={data} repoUrl={repoUrl} />
+          <Suspense fallback={
+            <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm bg-gray-300 text-gray-500 cursor-not-allowed">
+              <span>Loading...</span>
+            </button>
+          }>
+            <ExportPDFButton analysisData={data} repoUrl={repoUrl} />
+          </Suspense>
         </div>
       </div>
 
@@ -108,6 +118,21 @@ const AnalysisDashboard = ({ data, repoUrl }) => {
       </div>
     </div>
   );
+};
+
+AnalysisDashboard.propTypes = {
+  data: PropTypes.shape({
+    summary: PropTypes.shape({
+      overallQuality: PropTypes.number.isRequired,
+      filesAnalyzed: PropTypes.number.isRequired,
+      timestamp: PropTypes.string.isRequired,
+    }).isRequired,
+    files: PropTypes.array.isRequired,
+    metadata: PropTypes.shape({
+      totalCodeFiles: PropTypes.number,
+    }),
+  }).isRequired,
+  repoUrl: PropTypes.string.isRequired,
 };
 
 export default AnalysisDashboard;

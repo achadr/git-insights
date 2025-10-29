@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { exportToCSV, exportToJSON, exportSummaryToCSV } from '../../utils/dataExport';
 
 const ExportDataButton = ({ analysisData, repoUrl }) => {
@@ -22,8 +23,7 @@ const ExportDataButton = ({ analysisData, repoUrl }) => {
           break;
       }
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export data. Please try again.');
+      alert(error.message || 'Failed to export data. Please try again.');
     } finally {
       setIsExporting(false);
       setIsOpen(false);
@@ -95,6 +95,11 @@ const ExportDataButton = ({ analysisData, repoUrl }) => {
       )}
     </div>
   );
+};
+
+ExportDataButton.propTypes = {
+  analysisData: PropTypes.object.isRequired,
+  repoUrl: PropTypes.string.isRequired,
 };
 
 export default ExportDataButton;

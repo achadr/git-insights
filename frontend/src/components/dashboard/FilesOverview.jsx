@@ -1,13 +1,16 @@
+import PropTypes from 'prop-types';
+import { SCORE_THRESHOLDS } from '../../constants/scoreThresholds';
+
 const FilesOverview = ({ files }) => {
   if (!files || files.length === 0) {
     return null;
   }
 
   // Categorize files by score
-  const excellent = files.filter(f => f.score >= 80).length;
-  const good = files.filter(f => f.score >= 60 && f.score < 80).length;
-  const fair = files.filter(f => f.score >= 40 && f.score < 60).length;
-  const poor = files.filter(f => f.score < 40).length;
+  const excellent = files.filter(f => f.score >= SCORE_THRESHOLDS.EXCELLENT).length;
+  const good = files.filter(f => f.score >= SCORE_THRESHOLDS.GOOD && f.score < SCORE_THRESHOLDS.EXCELLENT).length;
+  const fair = files.filter(f => f.score >= SCORE_THRESHOLDS.FAIR && f.score < SCORE_THRESHOLDS.GOOD).length;
+  const poor = files.filter(f => f.score < SCORE_THRESHOLDS.FAIR).length;
 
   const categories = [
     { label: 'Excellent', count: excellent, color: 'bg-green-500', textColor: 'text-green-700 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-900/30' },
@@ -27,12 +30,12 @@ const FilesOverview = ({ files }) => {
       {/* Visual Bar Chart */}
       <div className="mb-4">
         <div className="flex h-8 rounded-lg overflow-hidden shadow-sm">
-          {categories.map((cat, idx) => {
+          {categories.map((cat) => {
             const percentage = (cat.count / total) * 100;
             if (percentage === 0) return null;
             return (
               <div
-                key={idx}
+                key={cat.label}
                 className={`${cat.color} flex items-center justify-center text-white text-xs font-semibold transition-all duration-300 hover:opacity-90 cursor-pointer`}
                 style={{ width: `${percentage}%` }}
                 title={`${cat.label}: ${cat.count} files (${percentage.toFixed(1)}%)`}
@@ -46,8 +49,8 @@ const FilesOverview = ({ files }) => {
 
       {/* Legend */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {categories.map((cat, idx) => (
-          <div key={idx} className={`${cat.bgColor} rounded-lg p-3 transition-all duration-200 hover:shadow-md`}>
+        {categories.map((cat) => (
+          <div key={cat.label} className={`${cat.bgColor} rounded-lg p-3 transition-all duration-200 hover:shadow-md`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className={`w-3 h-3 rounded-full ${cat.color} mr-2`}></div>
@@ -68,6 +71,15 @@ const FilesOverview = ({ files }) => {
       </div>
     </div>
   );
+};
+
+FilesOverview.propTypes = {
+  files: PropTypes.arrayOf(
+    PropTypes.shape({
+      score: PropTypes.number.isRequired,
+      file: PropTypes.string,
+    })
+  ),
 };
 
 export default FilesOverview;

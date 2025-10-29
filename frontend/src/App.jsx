@@ -1,10 +1,16 @@
+import { Suspense, lazy } from 'react';
 import Layout from './components/layout/Layout';
-import HomePage from './pages/HomePage';
+import LoadingSpinner from './components/common/LoadingSpinner';
+
+// Lazy load HomePage for better initial load performance
+const HomePage = lazy(() => import('./pages/HomePage'));
 
 function App() {
   return (
     <Layout>
-      <HomePage />
+      <Suspense fallback={<LoadingSpinner />}>
+        <HomePage />
+      </Suspense>
     </Layout>
   );
 }

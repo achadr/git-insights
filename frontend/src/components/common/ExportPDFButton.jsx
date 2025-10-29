@@ -1,12 +1,9 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { generatePDFReport } from '../../utils/pdfExport';
 
 /**
  * Button component for exporting analysis report as PDF
- * @param {Object} props
- * @param {Object} props.analysisData - The complete analysis data
- * @param {string} props.repoUrl - The repository URL
- * @param {string} props.className - Optional additional CSS classes
  */
 const ExportPDFButton = ({ analysisData, repoUrl, className = '' }) => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -24,11 +21,8 @@ const ExportPDFButton = ({ analysisData, repoUrl, className = '' }) => {
       // Show success message
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
-
-      console.log('PDF generated successfully:', result.fileName);
     } catch (err) {
-      console.error('Failed to generate PDF:', err);
-      setError('Failed to generate PDF. Please try again.');
+      setError(err.message || 'Failed to generate PDF. Please try again.');
       setTimeout(() => setError(null), 5000);
     } finally {
       setIsGenerating(false);
@@ -149,6 +143,12 @@ const ExportPDFButton = ({ analysisData, repoUrl, className = '' }) => {
       )}
     </div>
   );
+};
+
+ExportPDFButton.propTypes = {
+  analysisData: PropTypes.object.isRequired,
+  repoUrl: PropTypes.string.isRequired,
+  className: PropTypes.string,
 };
 
 export default ExportPDFButton;

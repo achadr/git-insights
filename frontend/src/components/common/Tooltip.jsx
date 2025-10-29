@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
+import PropTypes from 'prop-types';
 
 const Tooltip = ({ children, content, position = 'top' }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -36,4 +37,10 @@ const Tooltip = ({ children, content, position = 'top' }) => {
   );
 };
 
-export default Tooltip;
+Tooltip.propTypes = {
+  children: PropTypes.node.isRequired,
+  content: PropTypes.string.isRequired,
+  position: PropTypes.oneOf(['top', 'bottom', 'left', 'right']),
+};
+
+export default memo(Tooltip);

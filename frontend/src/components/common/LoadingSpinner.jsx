@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 
 const LoadingSpinner = ({ withSkeleton = true }) => {
   const [loadingText, setLoadingText] = useState('Analyzing repository');
@@ -30,7 +31,7 @@ const LoadingSpinner = ({ withSkeleton = true }) => {
   }, []);
 
   return (
-    <div className="space-y-6 py-8">
+    <div className="space-y-6 py-8" aria-live="polite" aria-busy="true">
       {/* Spinner and Message */}
       <div className="flex flex-col items-center justify-center py-6">
         <div className="relative">
@@ -63,8 +64,8 @@ const LoadingSpinner = ({ withSkeleton = true }) => {
             <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 h-48">
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
               <div className="grid grid-cols-3 gap-4 mt-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                {['quality-1', 'quality-2', 'quality-3'].map(id => (
+                  <div key={id} className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
                     <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-2"></div>
                     <div className="h-8 bg-gray-300 dark:bg-gray-500 rounded w-3/4"></div>
                   </div>
@@ -77,8 +78,8 @@ const LoadingSpinner = ({ withSkeleton = true }) => {
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
             <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+              {['file-1', 'file-2', 'file-3'].map(id => (
+                <div key={id} className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-2/3 mb-2"></div>
@@ -94,6 +95,10 @@ const LoadingSpinner = ({ withSkeleton = true }) => {
       )}
     </div>
   );
+};
+
+LoadingSpinner.propTypes = {
+  withSkeleton: PropTypes.bool,
 };
 
 export default LoadingSpinner;

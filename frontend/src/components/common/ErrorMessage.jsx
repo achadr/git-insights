@@ -1,6 +1,8 @@
+import PropTypes from 'prop-types';
+
 const ErrorMessage = ({ message }) => {
   return (
-    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded" role="alert">
       <div className="flex items-start">
         <div className="flex-shrink-0">
           <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
@@ -15,6 +17,10 @@ const ErrorMessage = ({ message }) => {
       </div>
     </div>
   );
+};
+
+ErrorMessage.propTypes = {
+  message: PropTypes.string.isRequired,
 };
 
 export default ErrorMessage;

@@ -46,8 +46,7 @@ export async function generatePDFReport(analysisData, repoUrl) {
 
     return { success: true, fileName };
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error('Failed to generate PDF report: ' + error.message);
+    throw new Error(`Failed to generate PDF report: ${error.message}`);
   }
 }
 
@@ -369,8 +368,7 @@ function addTopIssuesPage(doc, analysisData, pageWidth, pageHeight, startY) {
         filePath = item.file || null;
       }
 
-      // Check if we need more space (accounting for issue + file path)
-      const estimatedHeight = filePath ? 15 : 10;
+      // Check if we need more space
       if (yPosition > pageHeight - 40) {
         doc.addPage();
         yPosition = 20;

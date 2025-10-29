@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
+import { FILE_LIMITS } from '../../constants/scoreThresholds';
 
 const RepoUrlInput = ({ onSubmit }) => {
   const [url, setUrl] = useState('');
@@ -10,16 +12,18 @@ const RepoUrlInput = ({ onSubmit }) => {
     if (!url) {
       return 'Repository URL is required';
     }
-    if (!url.match(/github\.com/)) {
-      return 'Please enter a valid GitHub repository URL';
+    // Improved regex to validate GitHub repository URLs
+    const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
+    if (!githubUrlPattern.test(url.trim())) {
+      return 'Please enter a valid GitHub repository URL (e.g., https://github.com/owner/repo)';
     }
     return '';
   };
 
   const validateFileLimit = (limit) => {
     const num = parseInt(limit, 10);
-    if (isNaN(num) || num < 1 || num > 50) {
-      return 'File limit must be between 1 and 50';
+    if (isNaN(num) || num < 1 || num > FILE_LIMITS.MAX_FILES) {
+      return `File limit must be between 1 and ${FILE_LIMITS.MAX_FILES}`;
     }
     return '';
   };
@@ -69,7 +73,7 @@ const RepoUrlInput = ({ onSubmit }) => {
 
       <div>
         <label htmlFor="fileLimit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Number of files to analyze (1-50)
+          Number of files to analyze (1-{FILE_LIMITS.MAX_FILES})
         </label>
         <input
           type="number"
@@ -77,7 +81,7 @@ const RepoUrlInput = ({ onSubmit }) => {
           value={fileLimit}
           onChange={(e) => setFileLimit(e.target.value)}
           min="1"
-          max="50"
+          max={FILE_LIMITS.MAX_FILES}
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
           disabled={isLoading}
         />
@@ -101,6 +105,10 @@ const RepoUrlInput = ({ onSubmit }) => {
       </button>
     </form>
   );
+};
+
+RepoUrlInput.propTypes = {
+  onSubmit: PropTypes.func.isRequired,
 };
 
 export default RepoUrlInput;
