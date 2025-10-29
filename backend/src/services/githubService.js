@@ -109,6 +109,49 @@ class GitHubService {
     });
   }
 
+  selectImportantFiles(files, limit = 10) {
+    // Filter out test and config files first
+    const nonTestFiles = files.filter(file => {
+      const path = file.path.toLowerCase();
+      return !path.includes('.test.') &&
+             !path.includes('.spec.') &&
+             !path.includes('__tests__') &&
+             !path.includes('/test/') &&
+             !path.match(/\.(config|rc)\.(js|ts)$/);
+    });
+
+    // Score each file
+    const scoredFiles = nonTestFiles.map(file => {
+      let score = 0;
+      const path = file.path.toLowerCase();
+      const filename = path.split('/').pop();
+
+      // Entry points get highest priority
+      const entryPoints = ['index.js', 'index.ts', 'main.js', 'main.ts',
+                           'app.js', 'app.ts', 'app.jsx', 'app.tsx',
+                           'main.py', '__init__.py', '__main__.py'];
+      if (entryPoints.includes(filename)) {
+        score += 1000;
+      }
+
+      // Source directories get high priority
+      if (path.includes('src/') || path.includes('lib/') ||
+          path.includes('app/') || path.includes('core/')) {
+        score += 500;
+      }
+
+      // Larger files (use size in bytes from GitHub tree)
+      score += (file.size || 0) / 100;
+
+      return { ...file, score };
+    });
+
+    // Sort by score descending and take top N
+    return scoredFiles
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
   async checkRateLimit() {
     const { data } = await this.octokit.rateLimit.get();
 

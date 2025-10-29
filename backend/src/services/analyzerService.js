@@ -4,8 +4,11 @@ import cacheService from './cacheService.js';
 import config from '../config/env.js';
 
 class AnalyzerService {
-  async analyzeRepository(repoUrl, userApiKey = null) {
-    const cacheKey = cacheService.generateKey('analysis', repoUrl);
+  async analyzeRepository(repoUrl, userApiKey = null, fileLimit = 10) {
+    // Validate fileLimit
+    const validatedLimit = this.validateFileLimit(fileLimit);
+
+    const cacheKey = cacheService.generateKey('analysis', `${repoUrl}_${validatedLimit}`);
     const cached = cacheService.get(cacheKey);
 
     if (cached) {
@@ -15,14 +18,33 @@ class AnalyzerService {
     const { owner, repo } = githubService.parseGitHubUrl(repoUrl);
     const files = await githubService.getRepoTree(owner, repo);
     const codeFiles = githubService.filterCodeFiles(files);
-    const limitedFiles = codeFiles.slice(0, 10);
+    const totalCodeFiles = codeFiles.length;
+    const limitedFiles = githubService.selectImportantFiles(codeFiles, validatedLimit);
 
     const analyses = await this.analyzeFiles(limitedFiles, owner, repo, userApiKey);
-    const report = this.generateReport(analyses);
+    const report = this.generateReport(analyses, validatedLimit, totalCodeFiles);
 
     cacheService.set(cacheKey, report, 86400);
 
     return report;
+  }
+
+  validateFileLimit(fileLimit) {
+    const limit = parseInt(fileLimit, 10);
+
+    if (isNaN(limit)) {
+      return 10; // Default
+    }
+
+    if (limit < 1) {
+      return 1; // Minimum
+    }
+
+    if (limit > 50) {
+      return 50; // Maximum
+    }
+
+    return limit;
   }
 
   async analyzeFiles(files, owner, repo, userApiKey) {
@@ -134,12 +156,14 @@ ${code}`;
     return claudeService.parseJSON(response);
   }
 
-  generateReport(analyses) {
+  generateReport(analyses, requestedFileLimit = 10, totalCodeFiles = 0) {
     if (analyses.length === 0) {
       return {
         summary: {
           filesAnalyzed: 0,
           overallQuality: 0,
+          requestedFileLimit,
+          totalCodeFiles,
           timestamp: new Date().toISOString()
         },
         quality: {
@@ -156,10 +180,16 @@ ${code}`;
 
     const allIssues = analyses.flatMap(a => {
       const analysis = a.analysis;
+      const fileName = a.file;
+
       return Object.values(analysis)
         .flatMap(v => {
           if (typeof v === 'object' && v !== null && Array.isArray(v.issues)) {
-            return v.issues;
+            // Map each issue to an object with file reference
+            return v.issues.map(issue => ({
+              file: fileName,
+              issue: issue
+            }));
           }
           return [];
         });
@@ -169,6 +199,8 @@ ${code}`;
       summary: {
         filesAnalyzed: analyses.length,
         overallQuality: avgScore,
+        requestedFileLimit,
+        totalCodeFiles,
         timestamp: new Date().toISOString()
       },
       quality: {

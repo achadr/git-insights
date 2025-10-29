@@ -99,14 +99,14 @@ const HomePage = () => {
     return enhanced;
   };
 
-  const handleAnalyze = async (url) => {
+  const handleAnalyze = async (url, fileLimit) => {
     setLoading(true);
     setError('');
     setAnalysis(null);
     setRepoUrl(url);
 
     try {
-      const result = await analyzeRepository(url);
+      const result = await analyzeRepository(url, null, fileLimit);
       const enhancedData = enhanceAnalysisData(result.data);
       setAnalysis(enhancedData);
     } catch (err) {

@@ -25,7 +25,9 @@ const FileCard = ({ file }) => {
   };
 
   const getIssueIcon = (issue) => {
-    const lowerIssue = issue.toLowerCase();
+    // Handle both string format and object format {file, issue}
+    const issueText = typeof issue === 'string' ? issue : issue.issue;
+    const lowerIssue = issueText.toLowerCase();
 
     if (lowerIssue.includes('security') || lowerIssue.includes('vulnerability')) {
       return (
@@ -124,14 +126,24 @@ const FileCard = ({ file }) => {
                 Issues Found ({file.issues.length})
               </h4>
               <div className="space-y-2">
-                {file.issues.map((issue, idx) => (
-                  <div key={idx} className="flex items-start bg-white bg-opacity-50 rounded p-3">
-                    <div className="flex-shrink-0 mr-3 mt-0.5">
-                      {getIssueIcon(issue)}
+                {file.issues.map((issue, idx) => {
+                  const issueText = typeof issue === 'string' ? issue : issue.issue;
+                  const issueFile = typeof issue === 'string' ? null : issue.file;
+
+                  return (
+                    <div key={idx} className="flex items-start bg-white bg-opacity-50 rounded p-3">
+                      <div className="flex-shrink-0 mr-3 mt-0.5">
+                        {getIssueIcon(issue)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-700">{issueText}</p>
+                        {issueFile && (
+                          <p className="text-xs text-gray-500 mt-1">File: {issueFile}</p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-700 flex-1">{issue}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

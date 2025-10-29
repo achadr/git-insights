@@ -3,11 +3,11 @@ import logger from '../utils/logger.js';
 
 export const analyzeRepository = async (req, res, next) => {
   try {
-    const { repoUrl, apiKey } = req.body;
+    const { repoUrl, apiKey, fileLimit = 10 } = req.body;
 
-    logger.info('Analysis requested', { repoUrl });
+    logger.info('Analysis requested', { repoUrl, fileLimit });
 
-    const result = await analyzerService.analyzeRepository(repoUrl, apiKey);
+    const result = await analyzerService.analyzeRepository(repoUrl, apiKey, fileLimit);
 
     res.json({
       success: true,

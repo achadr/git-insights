@@ -17,7 +17,7 @@ export async function generatePDFReport(analysisData, repoUrl) {
     // Extract repo name from URL
     const repoName = extractRepoName(repoUrl);
     const timestamp = new Date(analysisData.summary.timestamp).toLocaleDateString();
-    const totalIssues = analysisData.files?.reduce((sum, file) => sum + (file.issues?.length || 0), 0) || 0;
+    const totalIssues = analysisData.quality?.issueCount || 0;
 
     // ========== COVER PAGE ==========
     addCoverPage(doc, repoName, analysisData.summary.overallQuality, timestamp, pageWidth, pageHeight);
@@ -27,13 +27,15 @@ export async function generatePDFReport(analysisData, repoUrl) {
     yPosition = 20;
     yPosition = addSummaryPage(doc, analysisData, totalIssues, pageWidth, yPosition);
 
+    // ========== TOP ISSUES & RECOMMENDATIONS PAGE ==========
+    doc.addPage();
+    yPosition = 20;
+    addTopIssuesPage(doc, analysisData, pageWidth, pageHeight, yPosition);
+
     // ========== FILES OVERVIEW TABLE ==========
     doc.addPage();
     yPosition = 20;
-    yPosition = addFilesOverviewTable(doc, analysisData.files, pageWidth, yPosition);
-
-    // ========== DETAILED FILE ANALYSIS ==========
-    addDetailedFileAnalysis(doc, analysisData.files, pageWidth, pageHeight);
+    addFilesOverviewTable(doc, analysisData.files, pageWidth, yPosition);
 
     // Add page numbers to all pages
     addPageNumbers(doc);
@@ -132,7 +134,7 @@ function addSummaryPage(doc, analysisData, totalIssues, pageWidth, startY) {
   const stats = [
     { label: 'Files Analyzed', value: analysisData.summary.filesAnalyzed, color: [59, 130, 246] },
     { label: 'Total Issues', value: totalIssues, color: [239, 68, 68] },
-    { label: 'Average Score', value: analysisData.summary.overallQuality, color: [147, 51, 234] },
+    { label: 'Quality Score', value: analysisData.summary.overallQuality, color: [147, 51, 234] },
   ];
 
   const cardWidth = 55;
@@ -166,6 +168,16 @@ function addSummaryPage(doc, analysisData, totalIssues, pageWidth, startY) {
   });
 
   yPosition += cardHeight + 20;
+
+  // Analysis Metadata
+  if (analysisData.summary.totalCodeFiles && analysisData.summary.requestedFileLimit) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    const metadataText = `Analyzed ${analysisData.summary.filesAnalyzed} of ${analysisData.summary.totalCodeFiles} code files (Smart selection prioritized)`;
+    doc.text(metadataText, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 15;
+  }
 
   // Quality Distribution Bar
   doc.setFontSize(14);
@@ -263,199 +275,194 @@ function addFilesOverviewTable(doc, files, pageWidth, startY) {
   const tableData = files.map(file => [
     file.file,
     String(file.score),
-    String(file.issues?.length || 0),
-    String(file.recommendations?.length || 0),
     getScoreLabel(file.score)
   ]);
 
   // Generate table
   autoTable(doc, {
     startY: yPosition,
-    head: [['File Path', 'Score', 'Issues', 'Recommendations', 'Rating']],
+    head: [['File Path', 'Score', 'Rating']],
     body: tableData,
-    theme: 'striped',
+    theme: 'grid',
     headStyles: {
       fillColor: [37, 99, 235],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 10,
+      halign: 'left',
     },
     bodyStyles: {
-      fontSize: 9,
+      fontSize: 8,
       textColor: [0, 0, 0],
+      cellPadding: 3,
     },
     columnStyles: {
-      0: { cellWidth: 70 },
-      1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 30, halign: 'center' },
-      4: { cellWidth: 30, halign: 'center' },
+      0: { cellWidth: 'auto', halign: 'left' },
+      1: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+      2: { cellWidth: 35, halign: 'center' },
     },
-    didDrawCell: (data) => {
-      // Color-code the score column
-      if (data.column.index === 1 && data.section === 'body') {
+    didParseCell: (data) => {
+      // Color-code the entire row based on score
+      if (data.section === 'body' && data.row.index < tableData.length) {
         const score = parseInt(tableData[data.row.index][1]);
-        const color = getScoreColor(score);
-        doc.setFillColor(...color, 0.2);
-        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-
-        // Redraw text on top
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(9);
-        doc.text(String(score), data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 2, { align: 'center' });
+        if (!isNaN(score)) {
+          const color = getScoreColor(score);
+          // Apply light background to score and rating columns
+          if (data.column.index === 1 || data.column.index === 2) {
+            data.cell.styles.fillColor = [...color, 25]; // Light opacity
+          }
+          // Make score text bold with the score color
+          if (data.column.index === 1) {
+            data.cell.styles.textColor = color;
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
       }
     },
     margin: { left: 20, right: 20 },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252], // Very light gray for alternate rows
+    },
   });
 
   return doc.lastAutoTable.finalY + 10;
 }
 
 /**
- * Add detailed file analysis
+ * Add top issues and recommendations page
  */
-function addDetailedFileAnalysis(doc, files, pageWidth, pageHeight) {
-  files.forEach((file, index) => {
-    doc.addPage();
-    let yPosition = 20;
+function addTopIssuesPage(doc, analysisData, pageWidth, pageHeight, startY) {
+  let yPosition = startY;
 
-    // File header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text(`File ${index + 1} of ${files.length}`, 20, yPosition);
-    yPosition += 10;
+  // Page Title
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('Top Issues & Recommendations', 20, yPosition);
+  yPosition += 15;
 
-    // File path
-    doc.setFontSize(12);
+  // ========== TOP ISSUES SECTION ==========
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(239, 68, 68); // Red
+  doc.text('Top Issues Found', 20, yPosition);
+  yPosition += 8;
+
+  const topIssues = analysisData.quality?.topIssues || [];
+
+  if (topIssues.length > 0) {
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    const filePathLines = doc.splitTextToSize(file.file, pageWidth - 40);
-    filePathLines.forEach(line => {
-      doc.text(line, 20, yPosition);
-      yPosition += 6;
-    });
-    yPosition += 5;
+    doc.setTextColor(60, 60, 60);
 
-    // Score with progress bar
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('Quality Score:', 20, yPosition);
+    topIssues.forEach((item, index) => {
+      // Handle both old format (strings) and new format (objects with file and issue)
+      let issueText, filePath;
 
-    doc.setFontSize(20);
-    const scoreColor = getScoreColor(file.score);
-    doc.setTextColor(...scoreColor);
-    doc.text(String(file.score), 60, yPosition);
+      if (typeof item === 'string') {
+        // Old format - just a string
+        issueText = item;
+        filePath = null;
+      } else {
+        // New format - object with file and issue properties
+        issueText = item.issue || item;
+        filePath = item.file || null;
+      }
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text(`(${getScoreLabel(file.score)})`, 75, yPosition);
-    yPosition += 10;
-
-    // Progress bar
-    const progressBarWidth = pageWidth - 40;
-    const progressBarHeight = 8;
-
-    // Background
-    doc.setFillColor(240, 240, 240);
-    doc.roundedRect(20, yPosition, progressBarWidth, progressBarHeight, 2, 2, 'F');
-
-    // Progress
-    const progressWidth = (file.score / 100) * progressBarWidth;
-    doc.setFillColor(...scoreColor);
-    doc.roundedRect(20, yPosition, progressWidth, progressBarHeight, 2, 2, 'F');
-    yPosition += 20;
-
-    // Issues Section
-    if (file.issues && file.issues.length > 0) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(239, 68, 68); // Red
-      doc.text(`Issues Found (${file.issues.length}):`, 20, yPosition);
-      yPosition += 8;
-
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-
-      file.issues.forEach((issue, idx) => {
-        // Check if we need a new page
-        if (yPosition > pageHeight - 40) {
-          doc.addPage();
-          yPosition = 20;
-        }
-
-        // Issue number circle
-        doc.setFillColor(239, 68, 68);
-        doc.circle(23, yPosition - 1.5, 2, 'F');
-
-        const issueLines = doc.splitTextToSize(issue, pageWidth - 50);
-        issueLines.forEach((line, lineIdx) => {
-          doc.text(line, 28, yPosition);
-          yPosition += 5;
-        });
-        yPosition += 3;
-      });
-
-      yPosition += 5;
-    } else {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(34, 197, 94); // Green
-      doc.text('No Issues Found', 20, yPosition);
-      yPosition += 15;
-    }
-
-    // Recommendations Section
-    if (file.recommendations && file.recommendations.length > 0) {
-      if (yPosition > pageHeight - 60) {
+      // Check if we need more space (accounting for issue + file path)
+      const estimatedHeight = filePath ? 15 : 10;
+      if (yPosition > pageHeight - 40) {
         doc.addPage();
         yPosition = 20;
       }
 
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(59, 130, 246); // Blue
-      doc.text(`Recommendations (${file.recommendations.length}):`, 20, yPosition);
-      yPosition += 8;
+      // Issue number badge
+      doc.setFillColor(239, 68, 68);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.circle(23, yPosition - 1.5, 2.5, 'F');
+      doc.text(String(index + 1), 23, yPosition, { align: 'center' });
 
+      // Issue text
+      doc.setTextColor(60, 60, 60);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-
-      file.recommendations.forEach((rec, idx) => {
-        // Check if we need a new page
-        if (yPosition > pageHeight - 40) {
-          doc.addPage();
-          yPosition = 20;
-        }
-
-        // Recommendation bullet
-        doc.setFillColor(59, 130, 246);
-        doc.circle(23, yPosition - 1.5, 2, 'F');
-
-        const recLines = doc.splitTextToSize(rec, pageWidth - 50);
-        recLines.forEach((line, lineIdx) => {
-          doc.text(line, 28, yPosition);
-          yPosition += 5;
-        });
-        yPosition += 3;
+      const issueLines = doc.splitTextToSize(issueText, pageWidth - 50);
+      issueLines.forEach((line) => {
+        doc.text(line, 30, yPosition);
+        yPosition += 5;
       });
-    } else {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(100, 100, 100);
-      doc.text('No Recommendations', 20, yPosition);
-      yPosition += 15;
+
+      // File path (if available)
+      if (filePath) {
+        doc.setTextColor(120, 120, 120); // Gray color
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+
+        // Truncate file path if too long (keep last 60 characters)
+        const displayPath = filePath.length > 60 ? '...' + filePath.slice(-60) : filePath;
+        doc.text(`File: ${displayPath}`, 30, yPosition);
+        yPosition += 5;
+      }
+
+      yPosition += 2;
+    });
+  } else {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(100, 100, 100);
+    doc.text('No issues detected', 25, yPosition);
+    yPosition += 10;
+  }
+
+  yPosition += 10;
+
+  // ========== RECOMMENDATIONS SECTION ==========
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(59, 130, 246); // Blue
+  doc.text('General Recommendations', 20, yPosition);
+  yPosition += 8;
+
+  const recommendations = generateGeneralRecommendations(analysisData);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+
+  recommendations.forEach((rec) => {
+    // Check if we need more space
+    if (yPosition > pageHeight - 40) {
+      doc.addPage();
+      yPosition = 20;
     }
 
-    // Separator line at bottom
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(20, pageHeight - 25, pageWidth - 20, pageHeight - 25);
+    // Recommendation bullet
+    doc.setFillColor(59, 130, 246);
+    doc.circle(23, yPosition - 1.5, 1.5, 'F');
+
+    // Recommendation text
+    const recLines = doc.splitTextToSize(rec, pageWidth - 50);
+    recLines.forEach((line) => {
+      doc.text(line, 30, yPosition);
+      yPosition += 5;
+    });
+    yPosition += 2;
   });
+
+  // Add a helpful note at the bottom
+  yPosition += 10;
+  if (yPosition < pageHeight - 50) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(120, 120, 120);
+    doc.setFillColor(240, 248, 255); // Light blue background
+    doc.roundedRect(20, yPosition, pageWidth - 40, 20, 2, 2, 'F');
+    doc.text('Note: These recommendations are generated based on the overall code analysis.', 25, yPosition + 7);
+    doc.text('Review the Files Overview section for specific file scores and prioritize accordingly.', 25, yPosition + 14);
+  }
+
+  return yPosition;
 }
 
 /**
@@ -478,6 +485,55 @@ function addPageNumbers(doc) {
     // Footer text
     doc.text('Generated by GitInsights', pageWidth - 20, pageHeight - 15, { align: 'right' });
   }
+}
+
+/**
+ * Helper: Generate general recommendations based on analysis
+ */
+function generateGeneralRecommendations(analysisData) {
+  const recommendations = [];
+  const avgScore = analysisData.summary.overallQuality;
+  const issueCount = analysisData.quality?.issueCount || 0;
+  const filesAnalyzed = analysisData.summary.filesAnalyzed;
+
+  // Score-based recommendations
+  if (avgScore < 60) {
+    recommendations.push('Critical: Address high-priority issues immediately to improve code maintainability and reliability.');
+    recommendations.push('Focus on refactoring files with scores below 60 as they pose the highest technical debt.');
+  } else if (avgScore < 70) {
+    recommendations.push('Focus on improving code structure, error handling, and reducing complexity in lower-scoring files.');
+    recommendations.push('Consider implementing code review practices to maintain quality standards.');
+  } else if (avgScore < 80) {
+    recommendations.push('Good overall quality. Focus on standardizing patterns across the codebase for consistency.');
+    recommendations.push('Address remaining issues to achieve excellent quality scores across all files.');
+  } else {
+    recommendations.push('Excellent code quality! Maintain current standards through regular code reviews and testing.');
+  }
+
+  // Issue count recommendations
+  if (issueCount > 50) {
+    recommendations.push(`High issue count detected (${issueCount} total). Prioritize refactoring efforts on files with the most issues.`);
+  } else if (issueCount > 20) {
+    recommendations.push(`Moderate issue count (${issueCount} total). Create a backlog to systematically address these over time.`);
+  }
+
+  // File-specific recommendations
+  const lowScoreFiles = analysisData.files.filter(f => f.score < 60);
+  if (lowScoreFiles.length > 0) {
+    recommendations.push(`${lowScoreFiles.length} file(s) have scores below 60. These should be your top refactoring priority.`);
+  }
+
+  // Best practices
+  recommendations.push('Implement automated testing to prevent quality regression in the future.');
+  recommendations.push('Consider setting up CI/CD quality gates to maintain code quality standards.');
+
+  // Coverage recommendation
+  if (analysisData.summary.totalCodeFiles && filesAnalyzed < analysisData.summary.totalCodeFiles) {
+    const percentage = Math.round((filesAnalyzed / analysisData.summary.totalCodeFiles) * 100);
+    recommendations.push(`This analysis covered ${percentage}% of your codebase. Consider running analysis on remaining files for complete coverage.`);
+  }
+
+  return recommendations;
 }
 
 /**
@@ -542,16 +598,16 @@ function generateKeyInsights(analysisData, distribution) {
     insights.push(`${distribution.poor} files need significant improvements. Focus on these files first for maximum impact.`);
   }
 
-  // Issue concentration
-  const filesWithIssues = analysisData.files.filter(f => f.issues && f.issues.length > 0).length;
-  if (filesWithIssues > 0) {
-    insights.push(`${filesWithIssues} files contain issues that should be reviewed and addressed.`);
+  // Issue count insight
+  const issueCount = analysisData.quality?.issueCount || 0;
+  if (issueCount > 0) {
+    insights.push(`${issueCount} total issues detected across the codebase. See Top Issues page for details.`);
   }
 
-  // Recommendations available
-  const filesWithRecommendations = analysisData.files.filter(f => f.recommendations && f.recommendations.length > 0).length;
-  if (filesWithRecommendations > 0) {
-    insights.push(`AI-powered recommendations are available for ${filesWithRecommendations} files to help improve code quality.`);
+  // Coverage insight
+  if (analysisData.summary.totalCodeFiles && analysisData.summary.filesAnalyzed < analysisData.summary.totalCodeFiles) {
+    const remaining = analysisData.summary.totalCodeFiles - analysisData.summary.filesAnalyzed;
+    insights.push(`${remaining} additional code files were not analyzed. This report focuses on the most impactful files.`);
   }
 
   return insights;

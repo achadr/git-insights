@@ -10,7 +10,18 @@ const schema = Joi.object({
       'string.uri': 'Must be a valid URL',
       'any.required': 'Repository URL is required'
     }),
-  apiKey: Joi.string().optional().allow(null)
+  apiKey: Joi.string().optional().allow(null),
+  fileLimit: Joi.number()
+    .integer()
+    .min(1)
+    .max(50)
+    .optional()
+    .messages({
+      'number.base': 'fileLimit must be a number',
+      'number.integer': 'fileLimit must be an integer',
+      'number.min': 'fileLimit must be at least 1',
+      'number.max': 'fileLimit cannot exceed 50'
+    })
 });
 
 export const validateRepoUrl = (req, res, next) => {

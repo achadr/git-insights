@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 const RepoUrlInput = ({ onSubmit }) => {
   const [url, setUrl] = useState('');
+  const [fileLimit, setFileLimit] = useState(10);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -15,19 +16,33 @@ const RepoUrlInput = ({ onSubmit }) => {
     return '';
   };
 
+  const validateFileLimit = (limit) => {
+    const num = parseInt(limit, 10);
+    if (isNaN(num) || num < 1 || num > 50) {
+      return 'File limit must be between 1 and 50';
+    }
+    return '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const validationError = validateUrl(url);
-    if (validationError) {
-      setError(validationError);
+    const urlError = validateUrl(url);
+    if (urlError) {
+      setError(urlError);
+      return;
+    }
+
+    const fileLimitError = validateFileLimit(fileLimit);
+    if (fileLimitError) {
+      setError(fileLimitError);
       return;
     }
 
     setIsLoading(true);
     try {
-      await onSubmit(url);
+      await onSubmit(url, fileLimit);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -50,12 +65,33 @@ const RepoUrlInput = ({ onSubmit }) => {
           className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={isLoading}
         />
-        {error && (
-          <p className="mt-2 text-sm text-red-600">
-            {error}
-          </p>
-        )}
       </div>
+
+      <div>
+        <label htmlFor="fileLimit" className="block text-sm font-medium text-gray-700 mb-2">
+          Number of files to analyze (1-50)
+        </label>
+        <input
+          type="number"
+          id="fileLimit"
+          value={fileLimit}
+          onChange={(e) => setFileLimit(e.target.value)}
+          min="1"
+          max="50"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          disabled={isLoading}
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Smart selection prioritizes entry points and important files
+        </p>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
         disabled={isLoading}

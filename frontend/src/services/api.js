@@ -2,11 +2,12 @@ import axios from 'axios';
 
 const baseURL = import.meta.env.VITE_API_URL;
 
-export const analyzeRepository = async (repoUrl, apiKey = null) => {
+export const analyzeRepository = async (repoUrl, apiKey = null, fileLimit = 10) => {
   try {
     const response = await axios.post(`${baseURL}/analyze`, {
       repoUrl,
-      apiKey
+      apiKey,
+      fileLimit
     });
 
     return response.data;
