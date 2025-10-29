@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(node src/index.js:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run lint)"
     ],
     "deny": [],
     "ask": []

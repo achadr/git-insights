@@ -1,16 +1,34 @@
-// Entry point - to be implemented by backend-agent
 import express from 'express';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import helmet from 'helmet';
+import config from './config/env.js';
+import corsMiddleware from './middleware/cors.js';
+import errorHandler from './middleware/errorHandler.js';
+import logger from './utils/logger.js';
+import analysisRoutes from './routes/analysis.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
+// Middleware
+app.use(helmet());
+app.use(corsMiddleware);
+app.use(express.json());
+
+// Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'GitInsights API' });
+  res.json({
+    status: 'ok',
+    message: 'GitInsights API'
+  });
 });
 
+// Routes
+app.use('/api', analysisRoutes);
+
+// Error handler middleware (must be last)
+app.use(errorHandler);
+
+// Start server
+const PORT = config.PORT;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });
