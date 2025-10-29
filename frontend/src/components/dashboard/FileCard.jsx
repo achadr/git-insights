@@ -1,20 +1,22 @@
 import { useState } from 'react';
+import CopyButton from '../common/CopyButton';
+import Tooltip from '../common/Tooltip';
 
 const FileCard = ({ file }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getScoreColor = (score) => {
-    if (score >= 80) return 'text-green-600 bg-green-50 border-green-200';
-    if (score >= 60) return 'text-blue-600 bg-blue-50 border-blue-200';
-    if (score >= 40) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    return 'text-red-600 bg-red-50 border-red-200';
+    if (score >= 80) return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700';
+    if (score >= 60) return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700';
+    if (score >= 40) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700';
+    return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700';
   };
 
   const getScoreBadgeColor = (score) => {
-    if (score >= 80) return 'bg-green-600';
-    if (score >= 60) return 'bg-blue-600';
-    if (score >= 40) return 'bg-yellow-600';
-    return 'bg-red-600';
+    if (score >= 80) return 'bg-green-600 dark:bg-green-500';
+    if (score >= 60) return 'bg-blue-600 dark:bg-blue-500';
+    if (score >= 40) return 'bg-yellow-600 dark:bg-yellow-500';
+    return 'bg-red-600 dark:bg-red-500';
   };
 
   const getScoreLabel = (score) => {
@@ -76,30 +78,37 @@ const FileCard = ({ file }) => {
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-4 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg"
+        className="w-full p-4 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 rounded-lg"
       >
         <div className="flex items-center flex-1 min-w-0 mr-4">
           <div className="flex-shrink-0 mr-3">
-            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate" title={file.file}>
-              {file.file}
-            </p>
-            <p className="text-xs text-gray-600 mt-1">
+            <div className="flex items-center gap-2">
+              <Tooltip content="Click to expand details" position="top">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={file.file}>
+                  {file.file}
+                </p>
+              </Tooltip>
+              <CopyButton text={file.file} label="file path" />
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
               {getScoreLabel(file.score)} • {file.issues?.length || 0} {file.issues?.length === 1 ? 'issue' : 'issues'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 flex-shrink-0">
-          <div className={`px-4 py-2 rounded-full text-white font-bold ${getScoreBadgeColor(file.score)}`}>
-            {file.score}
-          </div>
+          <Tooltip content={`Quality Score: ${file.score}/100`} position="left">
+            <div className={`px-4 py-2 rounded-full text-white font-bold ${getScoreBadgeColor(file.score)}`}>
+              {file.score}
+            </div>
+          </Tooltip>
           <svg
-            className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''}`}
+            className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

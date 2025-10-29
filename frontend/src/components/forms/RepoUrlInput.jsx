@@ -53,7 +53,7 @@ const RepoUrlInput = ({ onSubmit }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Repository URL
         </label>
         <input
@@ -62,13 +62,13 @@ const RepoUrlInput = ({ onSubmit }) => {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://github.com/owner/repo"
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 transition-colors duration-200"
           disabled={isLoading}
         />
       </div>
 
       <div>
-        <label htmlFor="fileLimit" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="fileLimit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Number of files to analyze (1-50)
         </label>
         <input
@@ -78,16 +78,16 @@ const RepoUrlInput = ({ onSubmit }) => {
           onChange={(e) => setFileLimit(e.target.value)}
           min="1"
           max="50"
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
           disabled={isLoading}
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Smart selection prioritizes entry points and important files
         </p>
       </div>
 
       {error && (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-red-600 dark:text-red-400 animate-slide-in">
           {error}
         </p>
       )}
@@ -95,7 +95,7 @@ const RepoUrlInput = ({ onSubmit }) => {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition font-medium disabled:bg-blue-400 disabled:cursor-not-allowed"
+        className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white py-3 px-6 rounded-md transition-all duration-200 font-medium disabled:bg-blue-400 dark:disabled:bg-blue-700 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
       >
         {isLoading ? 'Analyzing...' : 'Analyze'}
       </button>
