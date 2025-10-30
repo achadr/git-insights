@@ -152,7 +152,7 @@ Return ONLY valid JSON in this exact format:
 Code to analyze:
 ${code}`;
 
-    const response = await claudeService.analyze(prompt, '');
+    const response = await claudeService.analyze(prompt, '', userApiKey);
     return claudeService.parseJSON(response);
   }
 

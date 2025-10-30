@@ -11,6 +11,7 @@ const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'http://localhost:5173',
   RATE_LIMIT_FREE_TIER: parseInt(process.env.RATE_LIMIT_FREE_TIER) || 5,
+  RATE_LIMIT_PAID_TIER: parseInt(process.env.RATE_LIMIT_PAID_TIER) || 100,
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 86400000
 };
 

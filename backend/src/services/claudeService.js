@@ -9,9 +9,14 @@ class ClaudeService {
     this.model = config.ANTHROPIC_MODEL;
   }
 
-  async analyze(prompt, code) {
+  async analyze(prompt, code, userApiKey = null) {
     try {
-      const message = await this.client.messages.create({
+      // Use user-provided API key if available, otherwise use default
+      const client = userApiKey
+        ? new Anthropic({ apiKey: userApiKey })
+        : this.client;
+
+      const message = await client.messages.create({
         model: this.model,
         max_tokens: 4096,
         messages: [

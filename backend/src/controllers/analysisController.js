@@ -5,9 +5,17 @@ export const analyzeRepository = async (req, res, next) => {
   try {
     const { repoUrl, apiKey, fileLimit = 10 } = req.body;
 
-    logger.info('Analysis requested', { repoUrl, fileLimit });
+    // Use API key from header (set by apiKeyBypass middleware) if available,
+    // otherwise fall back to body parameter
+    const userApiKey = req.userAnthropicApiKey || apiKey;
 
-    const result = await analyzerService.analyzeRepository(repoUrl, apiKey, fileLimit);
+    logger.info('Analysis requested', {
+      repoUrl,
+      fileLimit,
+      usingUserApiKey: !!userApiKey
+    });
+
+    const result = await analyzerService.analyzeRepository(repoUrl, userApiKey, fileLimit);
 
     res.json({
       success: true,
