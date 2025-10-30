@@ -67,14 +67,96 @@ const config = {
   REQUEST_TIMEOUT_MS: parseInt(process.env.REQUEST_TIMEOUT_MS) || 30000 // 30 seconds default
 };
 
-// Validate required environment variables
-if (!config.ANTHROPIC_API_KEY) {
-  throw new Error('ANTHROPIC_API_KEY is required in environment variables');
+/**
+ * Validate required environment variables with helpful error messages
+ */
+function validateEnvironmentVariables() {
+  const errors = [];
+  const warnings = [];
+
+  // Required variables
+  if (!config.ANTHROPIC_API_KEY || config.ANTHROPIC_API_KEY === 'your-anthropic-api-key-here') {
+    errors.push({
+      variable: 'ANTHROPIC_API_KEY',
+      message: 'Anthropic API key is required',
+      solution: 'Get your API key from https://console.anthropic.com/settings/keys',
+      steps: [
+        '1. Sign up or log in to https://console.anthropic.com/',
+        '2. Navigate to API Keys section',
+        '3. Create a new API key',
+        '4. Add it to your .env file: ANTHROPIC_API_KEY=your-key-here'
+      ]
+    });
+  }
+
+  if (!config.GITHUB_TOKEN || config.GITHUB_TOKEN === 'your-github-personal-access-token-here') {
+    errors.push({
+      variable: 'GITHUB_TOKEN',
+      message: 'GitHub Personal Access Token is required',
+      solution: 'Create a token at https://github.com/settings/tokens',
+      steps: [
+        '1. Go to GitHub Settings > Developer settings > Personal access tokens',
+        '2. Click "Generate new token (classic)"',
+        '3. Select scopes: repo, read:user',
+        '4. Generate and copy the token',
+        '5. Add it to your .env file: GITHUB_TOKEN=your-token-here'
+      ]
+    });
+  }
+
+  // Optional but recommended
+  if (!config.REDIS_URL) {
+    warnings.push({
+      variable: 'REDIS_URL',
+      message: 'Redis URL not configured - using in-memory storage',
+      impact: 'Rate limiting will not persist across server restarts',
+      solution: 'Install Redis and set REDIS_URL=redis://localhost:6379'
+    });
+  }
+
+  // Display errors
+  if (errors.length > 0) {
+    console.error('\n========================================');
+    console.error('ENVIRONMENT CONFIGURATION ERRORS');
+    console.error('========================================\n');
+
+    errors.forEach((error, index) => {
+      console.error(`Error ${index + 1}: ${error.variable}`);
+      console.error(`  Message: ${error.message}`);
+      console.error(`  Solution: ${error.solution}`);
+      console.error('  Steps:');
+      error.steps.forEach(step => console.error(`    ${step}`));
+      console.error('');
+    });
+
+    console.error('========================================');
+    console.error('Please configure the required environment variables in your .env file');
+    console.error('See backend/.env.example for a template');
+    console.error('========================================\n');
+
+    throw new Error(`Missing required environment variables: ${errors.map(e => e.variable).join(', ')}`);
+  }
+
+  // Display warnings
+  if (warnings.length > 0 && config.NODE_ENV === 'development') {
+    console.warn('\n========================================');
+    console.warn('ENVIRONMENT CONFIGURATION WARNINGS');
+    console.warn('========================================\n');
+
+    warnings.forEach((warning, index) => {
+      console.warn(`Warning ${index + 1}: ${warning.variable}`);
+      console.warn(`  Message: ${warning.message}`);
+      console.warn(`  Impact: ${warning.impact}`);
+      console.warn(`  Solution: ${warning.solution}`);
+      console.warn('');
+    });
+
+    console.warn('========================================\n');
+  }
 }
 
-if (!config.GITHUB_TOKEN) {
-  throw new Error('GITHUB_TOKEN is required in environment variables');
-}
+// Validate environment variables
+validateEnvironmentVariables();
 
 // Log configuration in development (with sensitive data masked)
 if (config.NODE_ENV === 'development') {
