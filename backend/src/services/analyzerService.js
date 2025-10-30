@@ -2,6 +2,7 @@ import githubService from './githubService.js';
 import claudeService from './claudeService.js';
 import cacheService from './cacheService.js';
 import config from '../config/env.js';
+import logger from '../utils/logger.js';
 
 class AnalyzerService {
   async analyzeRepository(repoUrl, userApiKey = null, fileLimit = 10) {
@@ -62,7 +63,12 @@ class AnalyzerService {
 
         await this.sleep(1000);
       } catch (error) {
-        console.error(`Failed to analyze ${file.path}:`, error.message);
+        logger.warn('Failed to analyze file', {
+          file: file.path,
+          error: error.message,
+          owner,
+          repo
+        });
         continue;
       }
     }

@@ -1,14 +1,4 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-import githubService from '../../services/githubService.js';
-import { Octokit } from '@octokit/rest';
-import { mockGitHubRepo, mockRepoTree } from '../mocks/mockData.js';
-
-// Mock config
-jest.mock('../../config/env.js', () => ({
-  default: {
-    GITHUB_TOKEN: 'ghp_test_token_12345'
-  }
-}));
 
 // Setup mock Octokit instance
 const mockOctokit = {
@@ -25,14 +15,29 @@ const mockOctokit = {
   }
 };
 
-// Mock Octokit
+// Mock Octokit before importing anything else
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn(() => mockOctokit)
 }));
 
+// Mock config
+jest.mock('../../config/env.js', () => ({
+  default: {
+    GITHUB_TOKEN: 'ghp_test_token_12345'
+  }
+}));
+
+// Import after mocks are set up
+import githubService from '../../services/githubService.js';
+import { Octokit } from '@octokit/rest';
+import { mockGitHubRepo, mockRepoTree } from '../mocks/mockData.js';
+
 describe('GitHubService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Replace the service's octokit with our mock
+    githubService.octokit = mockOctokit;
   });
 
   describe('getRepository', () => {

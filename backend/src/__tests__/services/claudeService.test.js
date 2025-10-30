@@ -1,7 +1,17 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-import claudeService from '../../services/claudeService.js';
-import Anthropic from '@anthropic-ai/sdk';
-import { mockClaudeResponse } from '../mocks/mockData.js';
+
+// Create mock function at module level
+const mockMessagesCreate = jest.fn();
+
+jest.mock('@anthropic-ai/sdk', () => ({
+  default: jest.fn(function() {
+    return {
+      messages: {
+        create: mockMessagesCreate
+      }
+    };
+  })
+}));
 
 // Mock config
 jest.mock('../../config/env.js', () => ({
@@ -11,30 +21,31 @@ jest.mock('../../config/env.js', () => ({
   }
 }));
 
-// Mock the Anthropic SDK
-const mockMessagesCreate = jest.fn();
-const mockAnthropicInstance = {
-  messages: {
-    create: mockMessagesCreate
-  }
-};
-
-jest.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: jest.fn(() => mockAnthropicInstance)
-  };
-});
+// Import after mocks
+import claudeService from '../../services/claudeService.js';
+import Anthropic from '@anthropic-ai/sdk';
+import { mockClaudeResponse } from '../mocks/mockData.js';
 
 describe('ClaudeService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockMessagesCreate.mockClear();
+
+    // mockMessagesCreate is now defined from the factory above
+    // Reset the service's client to use the mock
+    claudeService.client = {
+      messages: {
+        create: mockMessagesCreate
+      }
+    };
   });
 
   describe('analyze', () => {
-    it('should successfully analyze code with system API key', async () => {
+    beforeEach(() => {
+      // Set up default mock response for all tests
       mockMessagesCreate.mockResolvedValue(mockClaudeResponse);
+    });
 
+    it('should successfully analyze code with system API key', async () => {
       const prompt = 'Analyze this code';
       const code = '';
 
@@ -55,7 +66,6 @@ describe('ClaudeService', () => {
 
     it('should use user-provided API key when provided', async () => {
       const userApiKey = 'sk-ant-user-custom-key';
-      mockMessagesCreate.mockResolvedValue(mockClaudeResponse);
 
       const prompt = 'Analyze this code';
       const result = await claudeService.analyze(prompt, '', userApiKey);

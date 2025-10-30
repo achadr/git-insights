@@ -149,25 +149,111 @@ export const paidTierLimiter = rateLimit({
 });
 
 /**
+ * API Key Validation Cache
+ * Cache validated API keys to avoid repeated validation calls
+ * TTL: 1 hour
+ */
+const apiKeyValidationCache = new Map();
+const API_KEY_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Clean expired cache entries
+ */
+function cleanApiKeyCache() {
+  const now = Date.now();
+  for (const [key, value] of apiKeyValidationCache.entries()) {
+    if (now - value.timestamp > API_KEY_CACHE_TTL) {
+      apiKeyValidationCache.delete(key);
+    }
+  }
+}
+
+// Clean cache every 10 minutes
+setInterval(cleanApiKeyCache, 10 * 60 * 1000);
+
+/**
+ * Validate Anthropic API key by making a test request
+ * This ensures the key is not only formatted correctly but actually works
+ */
+async function validateAnthropicApiKey(apiKey) {
+  // Check format first (quick validation)
+  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
+    return { valid: false, reason: 'Invalid API key format' };
+  }
+
+  // Check cache
+  const cached = apiKeyValidationCache.get(apiKey);
+  if (cached) {
+    const age = Date.now() - cached.timestamp;
+    if (age < API_KEY_CACHE_TTL) {
+      logger.debug('API key validation: cache hit');
+      return { valid: cached.valid, reason: cached.reason };
+    }
+  }
+
+  // Validate with actual API call (lightweight request)
+  try {
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    const client = new Anthropic({ apiKey });
+
+    // Make a minimal request to validate the key
+    // Using a very small message to minimize cost
+    await client.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'test' }]
+    });
+
+    // Cache successful validation
+    apiKeyValidationCache.set(apiKey, {
+      valid: true,
+      timestamp: Date.now()
+    });
+
+    logger.info('API key validated successfully');
+    return { valid: true };
+  } catch (error) {
+    const reason = error.status === 401
+      ? 'Invalid or expired API key'
+      : 'API key validation failed';
+
+    // Cache failed validation for a shorter time (5 minutes)
+    if (error.status === 401) {
+      apiKeyValidationCache.set(apiKey, {
+        valid: false,
+        reason,
+        timestamp: Date.now() - (API_KEY_CACHE_TTL - 5 * 60 * 1000)
+      });
+    }
+
+    logger.warn('API key validation failed', { reason, status: error.status });
+    return { valid: false, reason };
+  }
+}
+
+/**
  * API key bypass middleware
  * Checks for user-provided Anthropic API key in headers
- * If present, stores it in req for use by services
+ * If present, validates it and stores it in req for use by services
  */
-export const apiKeyBypass = (req, res, next) => {
+export const apiKeyBypass = async (req, res, next) => {
   const userApiKey = req.headers['x-anthropic-api-key'];
 
   if (userApiKey) {
-    // Validate API key format
-    if (!userApiKey.startsWith('sk-ant-')) {
-      return res.status(400).json({
+    // Validate API key format and functionality
+    const validation = await validateAnthropicApiKey(userApiKey);
+
+    if (!validation.valid) {
+      return res.status(401).json({
         error: 'Invalid API Key',
-        message: 'The provided Anthropic API key format is invalid. API keys should start with "sk-ant-"'
+        message: validation.reason || 'The provided Anthropic API key is invalid',
+        code: 'INVALID_API_KEY'
       });
     }
 
     // Store user's API key for use in services
     req.userAnthropicApiKey = userApiKey;
-    logger.info('User provided Anthropic API key - rate limiting bypassed');
+    logger.info('User provided valid Anthropic API key - rate limiting bypassed');
   }
 
   next();

@@ -1,15 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-import analyzerService from '../../services/analyzerService.js';
-import githubService from '../../services/githubService.js';
-import claudeService from '../../services/claudeService.js';
-import cacheService from '../../services/cacheService.js';
-import {
-  mockRepoTree,
-  mockFileContent,
-  mockCodeQualityAnalysis
-} from '../mocks/mockData.js';
 
-// Mock dependencies
+// Mock dependencies BEFORE importing
 jest.mock('../../services/githubService.js');
 jest.mock('../../services/claudeService.js');
 jest.mock('../../services/cacheService.js');
@@ -25,16 +16,39 @@ jest.mock('../../config/env.js', () => ({
   }
 }));
 
+// Import AFTER mocks
+import analyzerService from '../../services/analyzerService.js';
+import githubService from '../../services/githubService.js';
+import claudeService from '../../services/claudeService.js';
+import cacheService from '../../services/cacheService.js';
+import {
+  mockRepoTree,
+  mockFileContent,
+  mockCodeQualityAnalysis
+} from '../mocks/mockData.js';
+
 describe('AnalyzerService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default mock implementations
-    cacheService.generateKey.mockImplementation((type, identifier) => {
-      return `gitinsights:${type}:${identifier}`;
-    });
-    cacheService.get.mockReturnValue(null);
-    cacheService.set.mockImplementation(() => {});
+    // Setup cacheService mocks
+    cacheService.generateKey = jest.fn((type, identifier) => `gitinsights:${type}:${identifier}`);
+    cacheService.get = jest.fn(() => null);
+    cacheService.set = jest.fn();
+    cacheService.delete = jest.fn();
+    cacheService.exists = jest.fn(() => false);
+    cacheService.clear = jest.fn();
+
+    // Setup githubService mocks
+    githubService.parseGitHubUrl = jest.fn();
+    githubService.getRepoTree = jest.fn();
+    githubService.filterCodeFiles = jest.fn();
+    githubService.selectImportantFiles = jest.fn();
+    githubService.getFileContent = jest.fn();
+
+    // Setup claudeService mocks
+    claudeService.analyze = jest.fn();
+    claudeService.parseJSON = jest.fn();
   });
 
   describe('analyzeRepository', () => {
