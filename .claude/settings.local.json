@@ -11,7 +11,8 @@
       "Bash(npm outdated:*)",
       "Bash(npm run build:*)",
       "Bash(node --check:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

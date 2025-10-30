@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        #output {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .event {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-left: 3px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+            color: #f44336;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        #progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>SSE Endpoint Test</h1>
+
+    <div>
+        <label>Repository URL:</label><br>
+        <input type="text" id="repoUrl" value="https://github.com/octocat/Hello-World" style="width: 100%; padding: 8px; margin: 10px 0;">
+    </div>
+
+    <div>
+        <label>File Limit:</label><br>
+        <input type="number" id="fileLimit" value="3" min="1" max="50" style="width: 100px; padding: 8px; margin: 10px 0;">
+    </div>
+
+    <button onclick="startAnalysis()">Start Analysis</button>
+    <button onclick="clearOutput()">Clear</button>
+
+    <div id="progress-bar">
+        <div id="progress-fill" style="width: 0%">0%</div>
+    </div>
+
+    <div id="message" style="padding: 10px; font-weight: bold;"></div>
+
+    <div id="output"></div>
+
+    <script>
+        let reader = null;
+
+        async function startAnalysis() {
+            const repoUrl = document.getElementById('repoUrl').value;
+            const fileLimit = parseInt(document.getElementById('fileLimit').value);
+            const output = document.getElementById('output');
+            const progressFill = document.getElementById('progress-fill');
+            const messageDiv = document.getElementById('message');
+
+            output.innerHTML = '<div class="event">Starting analysis...</div>';
+
+            try {
+                const response = await fetch('http://localhost:3000/api/analyze/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ repoUrl, fileLimit })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+
+                    if (done) {
+                        output.innerHTML += '<div class="event" style="border-left-color: #2196F3;">Stream ended</div>';
+                        break;
+                    }
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const event = JSON.parse(line.substring(6));
+
+                            // Update progress bar
+                            progressFill.style.width = `${event.progress}%`;
+                            progressFill.textContent = `${event.progress}%`;
+
+                            // Update message
+                            messageDiv.textContent = event.message;
+                            if (event.current && event.total) {
+                                messageDiv.textContent += ` (${event.current}/${event.total})`;
+                            }
+
+                            // Add to output
+                            const isError = event.stage === 'error' || event.stage === 'file_error';
+                            const div = document.createElement('div');
+                            div.className = 'event' + (isError ? ' error' : '');
+                            div.innerHTML = `
+                                <strong>[${event.stage}]</strong> ${event.progress}% - ${event.message}
+                                ${event.current ? ` (${event.current}/${event.total})` : ''}
+                            `;
+                            output.appendChild(div);
+                            output.scrollTop = output.scrollHeight;
+
+                            // Handle completion
+                            if (event.stage === 'complete') {
+                                console.log('Analysis complete!', event.data);
+                                div.innerHTML += '<br><strong>Result received:</strong> ' + JSON.stringify(event.data.summary, null, 2);
+                            }
+
+                            // Handle errors
+                            if (event.stage === 'error') {
+                                console.error('Error:', event.data);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                output.innerHTML += `<div class="event error">Error: ${error.message}</div>`;
+                console.error('Error:', error);
+            }
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('progress-fill').textContent = '0%';
+            document.getElementById('message').textContent = '';
+        }
+    </script>
+</body>
+</html>

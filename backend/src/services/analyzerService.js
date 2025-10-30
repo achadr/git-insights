@@ -5,24 +5,99 @@ import config from '../config/env.js';
 import logger from '../utils/logger.js';
 
 class AnalyzerService {
-  async analyzeRepository(repoUrl, userApiKey = null, fileLimit = 10) {
+  /**
+   * Analyze a GitHub repository with optional progress tracking
+   * @param {string} repoUrl - GitHub repository URL
+   * @param {string|null} userApiKey - User's Anthropic API key
+   * @param {number} fileLimit - Maximum number of files to analyze
+   * @param {function|null} progressCallback - Optional callback for progress updates
+   * @returns {Promise<Object>} Analysis report
+   */
+  async analyzeRepository(repoUrl, userApiKey = null, fileLimit = 10, progressCallback = null) {
     // Validate fileLimit
     const validatedLimit = this.validateFileLimit(fileLimit);
+
+    // Emit progress: validation started
+    if (progressCallback) {
+      progressCallback({
+        stage: 'validation',
+        message: 'Validating repository URL',
+        progress: 5
+      });
+    }
 
     const cacheKey = cacheService.generateKey('analysis', `${repoUrl}_${validatedLimit}`);
     const cached = cacheService.get(cacheKey);
 
     if (cached) {
+      // Emit progress: returning cached result
+      if (progressCallback) {
+        progressCallback({
+          stage: 'cached',
+          message: 'Returning cached analysis',
+          progress: 100
+        });
+      }
       return cached;
     }
 
+    // Emit progress: parsing URL
+    if (progressCallback) {
+      progressCallback({
+        stage: 'parsing',
+        message: 'Parsing repository URL',
+        progress: 10
+      });
+    }
+
     const { owner, repo } = githubService.parseGitHubUrl(repoUrl);
+
+    // Emit progress: fetching file tree
+    if (progressCallback) {
+      progressCallback({
+        stage: 'fetching_tree',
+        message: 'Fetching repository file tree',
+        progress: 15
+      });
+    }
+
     const files = await githubService.getRepoTree(owner, repo);
     const codeFiles = githubService.filterCodeFiles(files);
     const totalCodeFiles = codeFiles.length;
+
+    // Emit progress: files fetched
+    if (progressCallback) {
+      progressCallback({
+        stage: 'tree_fetched',
+        message: `Found ${totalCodeFiles} code files`,
+        progress: 25,
+        data: { totalCodeFiles }
+      });
+    }
+
     const limitedFiles = githubService.selectImportantFiles(codeFiles, validatedLimit);
 
-    const analyses = await this.analyzeFiles(limitedFiles, owner, repo, userApiKey);
+    // Emit progress: starting analysis
+    if (progressCallback) {
+      progressCallback({
+        stage: 'analysis_starting',
+        message: `Starting analysis of ${limitedFiles.length} files`,
+        progress: 30,
+        data: { filesToAnalyze: limitedFiles.length }
+      });
+    }
+
+    const analyses = await this.analyzeFiles(limitedFiles, owner, repo, userApiKey, progressCallback);
+
+    // Emit progress: generating report
+    if (progressCallback) {
+      progressCallback({
+        stage: 'generating_report',
+        message: 'Generating analysis report',
+        progress: 95
+      });
+    }
+
     const report = this.generateReport(analyses, validatedLimit, totalCodeFiles);
 
     cacheService.set(cacheKey, report, 86400);
@@ -48,11 +123,40 @@ class AnalyzerService {
     return limit;
   }
 
-  async analyzeFiles(files, owner, repo, userApiKey) {
+  /**
+   * Analyze multiple files with progress tracking
+   * @param {Array} files - Files to analyze
+   * @param {string} owner - Repository owner
+   * @param {string} repo - Repository name
+   * @param {string|null} userApiKey - User's Anthropic API key
+   * @param {function|null} progressCallback - Optional callback for progress updates
+   * @returns {Promise<Array>} Analysis results
+   */
+  async analyzeFiles(files, owner, repo, userApiKey, progressCallback = null) {
     const results = [];
+    const total = files.length;
 
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const current = i + 1;
+
       try {
+        // Emit progress: analyzing specific file
+        if (progressCallback) {
+          const baseProgress = 30; // Starting point after tree fetch
+          const analysisRange = 65; // Progress range for analysis (30-95)
+          const fileProgress = baseProgress + (analysisRange * current / total);
+
+          progressCallback({
+            stage: 'analyzing_file',
+            message: `Analyzing ${file.path}`,
+            progress: Math.round(fileProgress),
+            current,
+            total,
+            data: { fileName: file.path }
+          });
+        }
+
         const content = await githubService.getFileContent(owner, repo, file.path);
         const analysis = await this.analyzeQuality(content, userApiKey);
 
@@ -69,6 +173,19 @@ class AnalyzerService {
           owner,
           repo
         });
+
+        // Emit progress: file analysis failed
+        if (progressCallback) {
+          progressCallback({
+            stage: 'file_error',
+            message: `Failed to analyze ${file.path}`,
+            progress: Math.round(30 + (65 * current / total)),
+            current,
+            total,
+            data: { fileName: file.path, error: error.message }
+          });
+        }
+
         continue;
       }
     }

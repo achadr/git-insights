@@ -1,34 +1,61 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
-const LoadingSpinner = ({ withSkeleton = true }) => {
-  const [loadingText, setLoadingText] = useState('Analyzing repository');
+const LoadingSpinner = ({
+  withSkeleton = true,
+  progress = 0,
+  message = '',
+  currentFile = null,
+  stage = ''
+}) => {
   const [dots, setDots] = useState('');
 
   useEffect(() => {
-    const messages = [
-      'Analyzing repository',
-      'Fetching code files',
-      'Running quality checks',
-      'Evaluating security',
-      'Generating insights',
-    ];
-    let messageIndex = 0;
-
-    const messageInterval = setInterval(() => {
-      messageIndex = (messageIndex + 1) % messages.length;
-      setLoadingText(messages[messageIndex]);
-    }, 2000);
-
     const dotsInterval = setInterval(() => {
       setDots(prev => prev.length >= 3 ? '' : prev + '.');
     }, 500);
 
     return () => {
-      clearInterval(messageInterval);
       clearInterval(dotsInterval);
     };
   }, []);
+
+  // Get stage-specific colors and icons
+  const getStageColor = (stage) => {
+    const colors = {
+      'connected': 'text-green-600 dark:text-green-400',
+      'validation': 'text-blue-600 dark:text-blue-400',
+      'parsing': 'text-yellow-600 dark:text-yellow-400',
+      'fetching_tree': 'text-purple-600 dark:text-purple-400',
+      'tree_fetched': 'text-cyan-600 dark:text-cyan-400',
+      'analysis_starting': 'text-indigo-600 dark:text-indigo-400',
+      'analyzing_file': 'text-orange-600 dark:text-orange-400',
+      'file_error': 'text-amber-600 dark:text-amber-400',
+      'generating_report': 'text-brown-600 dark:text-brown-400',
+      'complete': 'text-green-600 dark:text-green-400',
+      'cached': 'text-gray-600 dark:text-gray-400',
+    };
+    return colors[stage] || 'text-blue-600 dark:text-blue-400';
+  };
+
+  const getStageIcon = (stage) => {
+    const icons = {
+      'connected': '🔌',
+      'validation': '✅',
+      'parsing': '🔍',
+      'fetching_tree': '🌳',
+      'tree_fetched': '📁',
+      'analysis_starting': '🚀',
+      'analyzing_file': '📄',
+      'file_error': '⚠️',
+      'generating_report': '📊',
+      'complete': '✨',
+      'cached': '💾',
+    };
+    return icons[stage] || '⏳';
+  };
+
+  const displayMessage = message || 'Starting analysis...';
 
   return (
     <div className="space-y-6 py-8" aria-live="polite" aria-busy="true">
@@ -40,10 +67,40 @@ const LoadingSpinner = ({ withSkeleton = true }) => {
             <div className="w-12 h-12 border-4 border-transparent border-b-blue-400 dark:border-b-blue-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
           </div>
         </div>
-        <div className="mt-6 text-center">
+
+        {/* Progress Information */}
+        <div className="mt-6 text-center space-y-3">
+          {/* Stage Icon and Progress Percentage */}
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-2xl">{getStageIcon(stage)}</span>
+            <span className={`text-2xl font-bold ${getStageColor(stage)}`}>
+              {progress}%
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-80 max-w-full mx-auto">
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-300 ease-out rounded-full"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Status Message */}
           <p className="text-lg font-medium text-gray-700 dark:text-gray-200">
-            {loadingText}{dots}
+            {displayMessage}{dots}
           </p>
+
+          {/* File Counter */}
+          {currentFile && (
+            <p className="text-sm text-gray-600 dark:text-gray-300 font-mono">
+              Analyzing file {currentFile.current} of {currentFile.total}
+            </p>
+          )}
+
+          {/* General Info */}
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
             This may take a few moments
           </p>
@@ -99,6 +156,13 @@ const LoadingSpinner = ({ withSkeleton = true }) => {
 
 LoadingSpinner.propTypes = {
   withSkeleton: PropTypes.bool,
+  progress: PropTypes.number,
+  message: PropTypes.string,
+  currentFile: PropTypes.shape({
+    current: PropTypes.number,
+    total: PropTypes.number,
+  }),
+  stage: PropTypes.string,
 };
 
 export default LoadingSpinner;

@@ -1,10 +1,11 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import RepoUrlInput from '../components/forms/RepoUrlInput';
 import AnalysisDashboard from '../components/dashboard/AnalysisDashboard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
 import { analyzeRepository } from '../services/api';
+import { useAnalysisStream } from '../hooks/useAnalysisStream';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useTheme } from '../contexts/ThemeContext';
 import { enhanceAnalysisData } from '../utils/dataEnhancement';
@@ -12,11 +13,23 @@ import { enhanceAnalysisData } from '../utils/dataEnhancement';
 const HomePage = () => {
   const [analysis, setAnalysis] = useState(null);
   const [repoUrl, setRepoUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [fallbackError, setFallbackError] = useState('');
   const searchInputRef = useRef(null);
   const { toggleTheme } = useTheme();
+
+  // SSE hook for real-time progress
+  const {
+    startAnalysis,
+    cancelAnalysis,
+    isAnalyzing,
+    progress,
+    stage,
+    message,
+    currentFile,
+    result: sseResult,
+    error: sseError,
+  } = useAnalysisStream();
 
   // Memoize keyboard shortcuts to prevent recreation on every render
   const keyboardShortcuts = useMemo(() => ({
@@ -38,22 +51,47 @@ const HomePage = () => {
   // Keyboard shortcuts
   useKeyboardShortcuts(keyboardShortcuts);
 
-  const handleAnalyze = useCallback(async (url, fileLimit) => {
-    setLoading(true);
-    setError('');
-    setAnalysis(null);
-    setRepoUrl(url);
+  // Handle SSE result
+  useEffect(() => {
+    if (sseResult) {
+      const enhancedData = enhanceAnalysisData(sseResult);
+      setAnalysis(enhancedData);
+    }
+  }, [sseResult]);
+
+  // Fallback to REST API if SSE fails
+  const fallbackToREST = useCallback(async (url, fileLimit) => {
+    console.log('Falling back to REST API...');
+    setFallbackError('');
 
     try {
       const result = await analyzeRepository(url, null, fileLimit);
       const enhancedData = enhanceAnalysisData(result.data);
       setAnalysis(enhancedData);
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setFallbackError(err.message);
     }
   }, []);
+
+  // Handle SSE error with fallback
+  useEffect(() => {
+    if (sseError && repoUrl) {
+      console.error('SSE Error:', sseError);
+      // Try REST API as fallback
+      const urlParams = new URLSearchParams(window.location.search);
+      const fileLimit = parseInt(urlParams.get('fileLimit')) || 10;
+      fallbackToREST(repoUrl, fileLimit);
+    }
+  }, [sseError, repoUrl, fallbackToREST]);
+
+  const handleAnalyze = useCallback(async (url, fileLimit) => {
+    setAnalysis(null);
+    setRepoUrl(url);
+    setFallbackError('');
+
+    // Start SSE stream for real-time progress
+    await startAnalysis(url, null, fileLimit);
+  }, [startAnalysis]);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -70,11 +108,23 @@ const HomePage = () => {
         <RepoUrlInput onSubmit={handleAnalyze} />
       </div>
 
-      {loading && <LoadingSpinner />}
+      {isAnalyzing && (
+        <LoadingSpinner
+          progress={progress}
+          message={message}
+          currentFile={currentFile}
+          stage={stage}
+        />
+      )}
 
-      {error && (
+      {(sseError || fallbackError) && (
         <div className="mt-8 animate-slide-in">
-          <ErrorMessage message={error} />
+          <ErrorMessage message={sseError?.error || fallbackError} />
+          {sseError && (
+            <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+              Attempted fallback to REST API
+            </div>
+          )}
         </div>
       )}
 
@@ -84,7 +134,7 @@ const HomePage = () => {
         </div>
       )}
 
-      {!loading && !error && !analysis && (
+      {!isAnalyzing && !sseError && !fallbackError && !analysis && (
         <div className="text-center py-12">
           <div className="text-gray-400 dark:text-gray-500 text-lg mb-4">
             Enter a GitHub repository URL above to get started
