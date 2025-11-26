@@ -28,7 +28,7 @@ const RepoUrlInput = ({ onSubmit }) => {
     return '';
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, selectFiles = false) => {
     e.preventDefault();
     setError('');
 
@@ -38,15 +38,17 @@ const RepoUrlInput = ({ onSubmit }) => {
       return;
     }
 
-    const fileLimitError = validateFileLimit(fileLimit);
-    if (fileLimitError) {
-      setError(fileLimitError);
-      return;
+    if (!selectFiles) {
+      const fileLimitError = validateFileLimit(fileLimit);
+      if (fileLimitError) {
+        setError(fileLimitError);
+        return;
+      }
     }
 
     setIsLoading(true);
     try {
-      await onSubmit(url, fileLimit);
+      await onSubmit(url, fileLimit, selectFiles);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -96,13 +98,27 @@ const RepoUrlInput = ({ onSubmit }) => {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white py-3 px-6 rounded-md transition-all duration-200 font-medium disabled:bg-blue-400 dark:disabled:bg-blue-700 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
-      >
-        {isLoading ? 'Analyzing...' : 'Analyze'}
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={isLoading}
+          onClick={(e) => handleSubmit(e, false)}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white py-3 px-6 rounded-md transition-all duration-200 font-medium disabled:bg-blue-400 dark:disabled:bg-blue-700 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          {isLoading ? 'Analyzing...' : 'Quick Analyze'}
+        </button>
+        <button
+          type="button"
+          disabled={isLoading}
+          onClick={(e) => handleSubmit(e, true)}
+          className="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white py-3 px-6 rounded-md transition-all duration-200 font-medium disabled:bg-green-400 dark:disabled:bg-green-700 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          {isLoading ? 'Loading...' : 'Select Files'}
+        </button>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+        Quick Analyze: Smart selection of top files | Select Files: Choose specific files to analyze
+      </p>
     </form>
   );
 };

@@ -30,7 +30,7 @@ export function useAnalysisStream() {
     return cleanup;
   }, [cleanup]);
 
-  const startAnalysis = useCallback(async (repoUrl, apiKey = null, fileLimit = 10) => {
+  const startAnalysis = useCallback(async (repoUrl, apiKey = null, fileLimit = 10, filePaths = null) => {
     if (!repoUrl) return;
 
     // Cleanup any previous connection
@@ -55,10 +55,19 @@ export function useAnalysisStream() {
         headers['x-anthropic-api-key'] = apiKey;
       }
 
+      const body = { repoUrl };
+
+      // If specific files are selected, send them; otherwise use fileLimit
+      if (filePaths && filePaths.length > 0) {
+        body.filePaths = filePaths;
+      } else {
+        body.fileLimit = fileLimit;
+      }
+
       const response = await fetch(`${baseURL}/analyze/stream`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ repoUrl, fileLimit }),
+        body: JSON.stringify(body),
         signal: abortControllerRef.current.signal,
       });
 

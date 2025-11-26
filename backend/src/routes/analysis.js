@@ -1,9 +1,13 @@
 import express from 'express';
-import { analyzeRepository, analyzeRepositoryStream } from '../controllers/analysisController.js';
+import { analyzeRepository, analyzeRepositoryStream, getRepositoryFiles } from '../controllers/analysisController.js';
 import { validateRepoUrl } from '../middleware/validator.js';
 import { freeTierLimiter, apiKeyBypass } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
+
+// Get repository file tree (for file selection)
+// Apply API key bypass check first, then rate limiting, then validation
+router.post('/files', apiKeyBypass, freeTierLimiter, validateRepoUrl, getRepositoryFiles);
 
 // Standard REST endpoint for repository analysis
 // Apply API key bypass check first, then rate limiting, then validation

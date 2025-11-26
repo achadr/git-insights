@@ -4,8 +4,10 @@ import AnalysisDashboard from '../components/dashboard/AnalysisDashboard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
+import { FileSelector } from '../components/FileSelector';
 import { analyzeRepository } from '../services/api';
 import { useAnalysisStream } from '../hooks/useAnalysisStream';
+import { useFileTree } from '../hooks/useFileTree';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useTheme } from '../contexts/ThemeContext';
 import { enhanceAnalysisData } from '../utils/dataEnhancement';
@@ -14,9 +16,14 @@ const HomePage = () => {
   const [analysis, setAnalysis] = useState(null);
   const [repoUrl, setRepoUrl] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showFileSelector, setShowFileSelector] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [fallbackError, setFallbackError] = useState('');
   const searchInputRef = useRef(null);
   const { toggleTheme } = useTheme();
+
+  // File tree hook
+  const { files, totalFiles, isLoading: isLoadingFiles, error: fileTreeError, fetchFiles } = useFileTree();
 
   // SSE hook for real-time progress
   const {
@@ -84,14 +91,32 @@ const HomePage = () => {
     }
   }, [sseError, repoUrl, fallbackToREST]);
 
-  const handleAnalyze = useCallback(async (url, fileLimit) => {
+  const handleAnalyze = useCallback(async (url, fileLimit, shouldSelectFiles = false) => {
     setAnalysis(null);
     setRepoUrl(url);
     setFallbackError('');
+    setSelectedFiles([]);
 
-    // Start SSE stream for real-time progress
-    await startAnalysis(url, null, fileLimit);
-  }, [startAnalysis]);
+    if (shouldSelectFiles) {
+      // Fetch file tree and show file selector
+      await fetchFiles(url);
+      setShowFileSelector(true);
+    } else {
+      // Start analysis immediately with file limit
+      await startAnalysis(url, null, fileLimit);
+    }
+  }, [startAnalysis, fetchFiles]);
+
+  const handleFileSelectionConfirm = useCallback(async () => {
+    setShowFileSelector(false);
+    // Start analysis with selected files
+    await startAnalysis(repoUrl, null, 10, selectedFiles);
+  }, [startAnalysis, repoUrl, selectedFiles]);
+
+  const handleFileSelectionCancel = useCallback(() => {
+    setShowFileSelector(false);
+    setSelectedFiles([]);
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -155,6 +180,24 @@ const HomePage = () => {
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
       />
+
+      {showFileSelector && (
+        <FileSelector
+          files={files}
+          selectedFiles={selectedFiles}
+          onSelectionChange={setSelectedFiles}
+          onConfirm={handleFileSelectionConfirm}
+          onCancel={handleFileSelectionCancel}
+        />
+      )}
+
+      {isLoadingFiles && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl">
+            <LoadingSpinner message="Loading repository files..." />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

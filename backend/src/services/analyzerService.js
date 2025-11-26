@@ -11,9 +11,10 @@ class AnalyzerService {
    * @param {string|null} userApiKey - User's Anthropic API key
    * @param {number} fileLimit - Maximum number of files to analyze
    * @param {function|null} progressCallback - Optional callback for progress updates
+   * @param {Array|null} filePaths - Optional array of specific file paths to analyze
    * @returns {Promise<Object>} Analysis report
    */
-  async analyzeRepository(repoUrl, userApiKey = null, fileLimit = 10, progressCallback = null) {
+  async analyzeRepository(repoUrl, userApiKey = null, fileLimit = 10, progressCallback = null, filePaths = null) {
     // Validate fileLimit
     const validatedLimit = this.validateFileLimit(fileLimit);
 
@@ -75,7 +76,21 @@ class AnalyzerService {
       });
     }
 
-    const limitedFiles = githubService.selectImportantFiles(codeFiles, validatedLimit);
+    // If specific file paths are provided, use them; otherwise select important files
+    let limitedFiles;
+    if (filePaths && filePaths.length > 0) {
+      // Filter the code files to only include the ones specified by the user
+      limitedFiles = codeFiles.filter(file => filePaths.includes(file.path));
+
+      // If some paths weren't found, log a warning
+      if (limitedFiles.length < filePaths.length) {
+        const foundPaths = limitedFiles.map(f => f.path);
+        const notFound = filePaths.filter(p => !foundPaths.includes(p));
+        logger.warn('Some requested files not found', { notFound });
+      }
+    } else {
+      limitedFiles = githubService.selectImportantFiles(codeFiles, validatedLimit);
+    }
 
     // Emit progress: starting analysis
     if (progressCallback) {

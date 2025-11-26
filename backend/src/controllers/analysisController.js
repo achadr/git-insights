@@ -7,7 +7,7 @@ import logger from '../utils/logger.js';
  */
 export const analyzeRepository = async (req, res, next) => {
   try {
-    const { repoUrl, apiKey, fileLimit = 10 } = req.body;
+    const { repoUrl, apiKey, fileLimit = 10, filePaths = null } = req.body;
 
     // Use API key from header (set by apiKeyBypass middleware) if available,
     // otherwise fall back to body parameter
@@ -15,11 +15,12 @@ export const analyzeRepository = async (req, res, next) => {
 
     logger.info('Analysis requested', {
       repoUrl,
-      fileLimit,
+      fileLimit: filePaths ? filePaths.length : fileLimit,
+      specificFiles: !!filePaths,
       usingUserApiKey: !!userApiKey
     });
 
-    const result = await analyzerService.analyzeRepository(repoUrl, userApiKey, fileLimit);
+    const result = await analyzerService.analyzeRepository(repoUrl, userApiKey, fileLimit, null, filePaths);
 
     res.json({
       success: true,
@@ -50,7 +51,7 @@ export const analyzeRepositoryStream = async (req, res, next) => {
   });
 
   try {
-    const { repoUrl, apiKey, fileLimit = 10 } = req.body;
+    const { repoUrl, apiKey, fileLimit = 10, filePaths = null } = req.body;
 
     // Use API key from header (set by apiKeyBypass middleware) if available,
     // otherwise fall back to body parameter
@@ -58,7 +59,8 @@ export const analyzeRepositoryStream = async (req, res, next) => {
 
     logger.info('SSE Analysis requested', {
       repoUrl,
-      fileLimit,
+      fileLimit: filePaths ? filePaths.length : fileLimit,
+      specificFiles: !!filePaths,
       usingUserApiKey: !!userApiKey
     });
 
@@ -72,7 +74,8 @@ export const analyzeRepositoryStream = async (req, res, next) => {
       repoUrl,
       userApiKey,
       fileLimit,
-      progressCallback
+      progressCallback,
+      filePaths
     );
 
     // Send final complete event with full results
@@ -103,6 +106,37 @@ export const analyzeRepositoryStream = async (req, res, next) => {
 
     // Close the connection
     res.end();
+  }
+};
+
+/**
+ * Get repository file tree without analyzing
+ * Allows users to browse and select files before analysis
+ */
+export const getRepositoryFiles = async (req, res, next) => {
+  try {
+    const { repoUrl } = req.body;
+
+    logger.info('File tree requested', { repoUrl });
+
+    const githubService = (await import('../services/githubService.js')).default;
+    const { owner, repo } = githubService.parseGitHubUrl(repoUrl);
+    const files = await githubService.getRepoTree(owner, repo);
+    const codeFiles = githubService.filterCodeFiles(files);
+
+    res.json({
+      success: true,
+      data: {
+        totalFiles: codeFiles.length,
+        files: codeFiles.map(file => ({
+          path: file.path,
+          size: file.size
+        }))
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to fetch file tree', { error: error.message });
+    next(error);
   }
 };
 
