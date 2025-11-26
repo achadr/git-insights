@@ -20,6 +20,11 @@ function parseAllowedOrigins(originsString) {
 
   // Validate each origin
   origins.forEach(origin => {
+    // Allow wildcard '*' for development/demo
+    if (origin === '*') {
+      return;
+    }
+
     try {
       // Check if valid URL
       const url = new URL(origin);
