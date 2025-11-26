@@ -74,9 +74,10 @@ app.set('trust proxy', 1);
 
 /**
  * Routes
+ * Note: Vercel strips the /api prefix, so we mount at root
  */
-app.use('/api/health', healthRoutes);
-app.use('/api', analysisRoutes);
+app.use('/health', healthRoutes);
+app.use('/', analysisRoutes);
 
 // 404 handler for undefined routes
 app.use((req, res) => {
