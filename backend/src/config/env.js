@@ -74,8 +74,9 @@ function validateEnvironmentVariables() {
   const errors = [];
   const warnings = [];
 
-  // Required variables
-  if (!config.ANTHROPIC_API_KEY || config.ANTHROPIC_API_KEY === 'your-anthropic-api-key-here') {
+  // Required variables (skip in development mode for demo deployments)
+  if (config.NODE_ENV !== 'development' &&
+      (!config.ANTHROPIC_API_KEY || config.ANTHROPIC_API_KEY === 'your-anthropic-api-key-here')) {
     errors.push({
       variable: 'ANTHROPIC_API_KEY',
       message: 'Anthropic API key is required',
@@ -86,6 +87,16 @@ function validateEnvironmentVariables() {
         '3. Create a new API key',
         '4. Add it to your .env file: ANTHROPIC_API_KEY=your-key-here'
       ]
+    });
+  }
+
+  // Log demo mode warning
+  if (config.NODE_ENV === 'development' && !config.ANTHROPIC_API_KEY) {
+    warnings.push({
+      variable: 'ANTHROPIC_API_KEY',
+      message: 'Running in DEMO MODE - using mock analysis data',
+      impact: 'AI analysis will return mock data instead of real Claude API results',
+      solution: 'This is perfect for portfolio demos. For production, set ANTHROPIC_API_KEY and NODE_ENV=production'
     });
   }
 
