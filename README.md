@@ -197,16 +197,6 @@ CRITICAL: Follow these security practices to protect your API keys:
    ```
    Solution: Ensure frontend URL is in `ALLOWED_ORIGINS` in backend/.env
 
-## Development
-
-Built using Claude Code agents:
-- `backend-agent` - API development
-- `frontend-agent` - UI development
-- `analyzer-agent` - Analysis logic
-- `integration-agent` - External APIs
-
-Quality assured with CodeGuardian agents.
-
 ## License
 
 MIT
