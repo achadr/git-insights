@@ -57,7 +57,8 @@ const corsOptions = {
   origin: validateOrigin,
 
   // Allow credentials (cookies, authorization headers)
-  credentials: true,
+  // Disabled in development to allow wildcard origin
+  credentials: config.NODE_ENV !== 'development',
 
   // Allowed HTTP methods
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
