@@ -106,18 +106,28 @@ function validateEnvironmentVariables() {
   }
 
   if (!config.GITHUB_TOKEN || config.GITHUB_TOKEN === 'your-github-personal-access-token-here') {
-    errors.push({
-      variable: 'GITHUB_TOKEN',
-      message: 'GitHub Personal Access Token is required',
-      solution: 'Create a token at https://github.com/settings/tokens',
-      steps: [
-        '1. Go to GitHub Settings > Developer settings > Personal access tokens',
-        '2. Click "Generate new token (classic)"',
-        '3. Select scopes: repo, read:user',
-        '4. Generate and copy the token',
-        '5. Add it to your .env file: GITHUB_TOKEN=your-token-here'
-      ]
-    });
+    // Only make GITHUB_TOKEN required in production or when not in serverless build
+    if (config.NODE_ENV === 'production' || !process.env.VERCEL) {
+      errors.push({
+        variable: 'GITHUB_TOKEN',
+        message: 'GitHub Personal Access Token is required',
+        solution: 'Create a token at https://github.com/settings/tokens',
+        steps: [
+          '1. Go to GitHub Settings > Developer settings > Personal access tokens',
+          '2. Click "Generate new token (classic)"',
+          '3. Select scopes: repo, read:user',
+          '4. Generate and copy the token',
+          '5. Add it to your .env file: GITHUB_TOKEN=your-token-here'
+        ]
+      });
+    } else {
+      warnings.push({
+        variable: 'GITHUB_TOKEN',
+        message: 'GitHub token not set - ensure it is configured in Vercel dashboard',
+        impact: 'Repository fetching will fail without GitHub token',
+        solution: 'Add GITHUB_TOKEN in Vercel project settings > Environment Variables'
+      });
+    }
   }
 
   // Optional but recommended
