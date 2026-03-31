@@ -1,3 +1,4 @@
+// Server entry point
 import express from 'express';
 import helmet from 'helmet';
 import config from './config/env.js';
